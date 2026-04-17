@@ -22,7 +22,9 @@ def get_filename_for_asset(yahoo_ticker: str, available_files: list) -> str:
         'STOXX50E': 'EUSTX50', 'FTSE': 'UK100', 'GDAXI': 'GER40', 'AXJO': 'AUS200',
         'CL=F': 'XTIUSD', 'BZ=F': 'XBRUSD', 'NG=F': 'XNGUSD', 'HG=F': 'XCUUSD',
         'GC=F': 'XAUUSD', 'SI=F': 'XAGUSD', 'PL=F': 'XPTUSD', 'PA=F': 'XPDUSD',
-        'ZC=F': 'Corn', 'ZW=F': 'Wheat', 'SB=F': 'Sugar', 'KC=F': 'Coffee'
+        'ZC=F': 'Corn', 'ZW=F': 'Wheat', 'SB=F': 'Sugar', 'KC=F': 'Coffee',
+        'ATOMUSD': 'ATMUSD',
+        'NEARUSD': 'NERUSD'
     }
     
     search_name = mapping.get(clean_ticker, clean_ticker)
@@ -61,9 +63,19 @@ def main():
                 filepath = os.path.join(DATA_DIR, filename)
                 df = pd.read_csv(filepath, index_col='time', parse_dates=True)
                 
-                # Train-Split (erste 70% der Daten nutzen)
-                df_train = df.iloc[:int(len(df)*0.7)]
-                cluster_data[asset] = df_train
+                # --- KORRIGIERTER REVERSE-SPLIT ---
+                split_idx = int(len(df) * 0.3)
+                df_train = df.iloc[split_idx:]  # Nimmt alles AB der 30%-Marke
+                
+                # NaNs entfernen und sicherstellen, dass Daten da sind
+                df_train.dropna(inplace=True)
+                
+                if len(df_train) > 100:
+                    cluster_data[asset] = df_train
+                else:
+                    print(f"  -> {asset} ignoriert: Zu wenig Daten nach Split.")
+                # ----------------------------------
+
             else:
                 print(f"  -> Warnung: Keine Datei für {asset} gefunden. Wird übersprungen.")
                 
