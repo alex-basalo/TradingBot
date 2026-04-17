@@ -15,7 +15,7 @@ def get_filename_for_asset(yahoo_ticker: str, available_files: list) -> str:
     # Sonderzeichen entfernen
     clean_ticker = yahoo_ticker.replace('=X', '').replace('^', '').replace('-', '')
     
-    # Mapping für Indizes und Rohstoffe (wie in data_engine.py definiert)
+    # Mapping für Indizes und Rohstoffe 
     mapping = {
         'DJI': 'US30', 'GSPC': 'US500', 'NDX': 'NAS100', 'RUT': 'US2000',
         'N225': 'JPN225', 'FCHI': 'FRA40', 'IBEX': 'SPA35', 'HSI': 'HK50',
