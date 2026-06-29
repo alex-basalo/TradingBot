@@ -13,6 +13,7 @@ Walk-Forward-Analyse mit ereignisgesteuertem Fenster-Shifting.
 src/                Quellcode (siehe unten)
 results/            Ergebnis-Artefakte je Lauf + runs_comparison.csv
 requirements.txt    gepinnte Abhängigkeiten (Reproduzierbarkeit)
+tools/              Hilfs-Skripte (Datenaufbereitung, Analyse)
 HistData_H1/        H1-CSV-Dateien je Währungspaar (NICHT im Repo, s. u.)
 ```
 
