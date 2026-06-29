@@ -1,4 +1,0 @@
-pandas
-numpy
-optuna
-pandas-ta
