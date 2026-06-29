@@ -1,0 +1,32 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Virtuelle Umgebungen ---
+.venv/
+venv/
+env/
+
+# --- Rohdaten (zu groß / Lizenz; siehe README) ---
+HistData_H1/
+*.csv.zip
+
+# --- Betriebssystem / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Laufzeit-Artefakte, die nicht ins Repo sollen ---
+# (Ergebnisse liegen bewusst in results/ und werden committet;
+#  lose Artefakte im Wurzelverzeichnis dagegen nicht)
+/*_Trades.csv
+/*_Summary.json
+/*_FoldLog.csv
+/*_AssetSummary.csv
+/*_Equity.png
+/*_Underwater.png
+/*_FoldPnL.png
+/runs_comparison.csv
