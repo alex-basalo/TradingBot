@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "experiment_name": "FF2_SeedShift62_2020-2026_28A_HistData",
+    "generated_utc": "2026-06-29T17:08:06+00:00",
+    "git_commit": "n/a",
+    "data_dir": "HistData_H1",
+    "data_start_filter": "2020-03-31",
+    "data_end_filter": "2026-03-31",
+    "banned_assets": [],
+    "data_span_actual": [
+      "2020-03-31 00:00:00",
+      "2026-03-31 00:00:00"
+    ],
+    "universe_size": 28,
+    "assets_traded": 28,
+    "seed_band": "62..71",
+    "versions": {
+      "optuna": "4.8.0",
+      "hmmlearn": "0.3.3",
+      "pandas": "3.0.1",
+      "numpy": "2.2.6",
+      "pandas_ta": "0.4.71b0",
+      "scikit-learn": "1.8.0"
+    }
+  },
+  "performance": {
+    "net_profit_usd": 7229.25,
+    "total_return_pct": 72.29,
+    "cagr_pct": 12.14,
+    "sharpe_daily_annualized": 0.523,
+    "sortino_daily_annualized": 0.684,
+    "profit_factor": 1.105,
+    "win_rate_pct": 48.14,
+    "n_trades": 2964,
+    "first_entry": "2021-06-30 14:00:00",
+    "last_exit": "2026-03-31 00:00:00"
+  },
+  "drawdown": {
+    "max_dd_abs": 5712.32,
+    "max_dd_pct": 30.11,
+    "max_dd_duration_days": 699,
+    "recovery_days": 393
+  },
+  "folds": {
+    "n_folds": 38,
+    "profitable_folds": 17,
+    "profitable_folds_pct": 44.73684210526316,
+    "best_fold": 4857.770608566365,
+    "worst_fold": -1244.1252814542386,
+    "median_fold": -57.33827409202054,
+    "mean_fold": 190.2433879836332,
+    "std_fold": 1218.787610343282
+  },
+  "safeguards": {
+    "seed_trailing_cb_hits": 181,
+    "fold_brake_hits": 7,
+    "dead_seed_stop_hits": 13,
+    "dynamic_shifts_total": 20,
+    "cash_folds": 0,
+    "per_asset_cap_hits": 127
+  },
+  "config": {
+    "EXPERIMENT_NAME": "FF2_SeedShift62_2020-2026_28A_HistData",
+    "RAW_DATA_DIR": "HistData_H1",
+    "DATA_START": "2020-03-31",
+    "DATA_END": "2026-03-31",
+    "BANNED_ASSETS": [],
+    "MAX_OPEN_TRADES": 10,
+    "MAX_LEVERAGE": 30.0,
+    "TRAIN_MONTHS": 15,
+    "INNER_VAL_MONTHS": 3,
+    "TEST_MONTHS": 2,
+    "BASE_SEED": 62,
+    "NUM_ENSEMBLES": 10,
+    "MIN_TRAIN_SHARPE": 0.05,
+    "MAX_OOS_LOSS_PER_ASSET": -200.0,
+    "HMM_STATES": 2,
+    "HMM_ITERATIONS": 500,
+    "TRIALS_PER_FOLD": 250,
+    "MIN_TRADES_PER_ASSET": 1,
+    "MIN_ACTIVE_ASSETS_PERCENT": 0.1,
+    "OPT_SWING_LEN": [
+      130,
+      240
+    ],
+    "OPT_ZONE_TOL_SWING": [
+      0.1,
+      0.8
+    ],
+    "OPT_RSI_LEN": [
+      14,
+      28
+    ],
+    "OPT_RSI_OVERSOLD": [
+      20,
+      35
+    ],
+    "OPT_RSI_OVERBOUGHT": [
+      65,
+      80
+    ],
+    "OPT_RRR_SR": [
+      1.0,
+      1.5
+    ],
+    "OPT_SL_MULT_SR": [
+      1.5,
+      3.0
+    ],
+    "START_CAPITAL": 10000.0,
+    "RISK_PER_TRADE": 60.0,
+    "FEE_RATE": 3.5e-05,
+    "SL_SLIPPAGE": 0.1,
+    "SPREAD_TRIGGER": 0.0002
+  }
+}
