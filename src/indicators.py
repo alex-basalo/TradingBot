@@ -1,5 +1,5 @@
 """
-Technische Indikatoren fuer das Reversal-System.
+Technische Indikatoren für das Reversal-System.
 
 Kapselt die Zonenberechnung (Kategorie A) und das RSI-Momentum (Kategorie B).
 """
@@ -11,7 +11,7 @@ import pandas_ta as ta
 
 class IndicatorEngine:
     """
-    Stellt die bereinigten technischen Indikatoren fuer das Reversal-System bereit.
+    Stellt die bereinigten technischen Indikatoren für das Reversal-System bereit.
     Kapselt die Zonenberechnung (Kategorie A) und das Momentum (Kategorie B).
     """
 
@@ -28,7 +28,7 @@ class IndicatorEngine:
         df_ind['roll_max'] = df_ind['high'].rolling(window=window, center=False).max()
         df_ind['roll_min'] = df_ind['low'].rolling(window=window, center=False).min()
 
-        # Bestaetigung erst 'length' Kerzen spaeter, um Look-Ahead-Bias zu vermeiden
+        # Bestätigung erst 'length' Kerzen später, um Look-Ahead-Bias zu vermeiden
         is_swing_high = df_ind['high'].shift(length) == df_ind['roll_max']
         is_swing_low = df_ind['low'].shift(length) == df_ind['roll_min']
 
@@ -44,7 +44,7 @@ class IndicatorEngine:
     @staticmethod
     def add_rsi_momentum(df: pd.DataFrame, length: int) -> pd.DataFrame:
         """
-        Kategorie B: Berechnet den Relative Strength Index (RSI) als Reversal-Bestaetigung.
+        Kategorie B: Berechnet den Relative Strength Index (RSI) als Reversal-Bestätigung.
         """
         df_ind = df.copy()
         df_ind['momentum_main'] = ta.rsi(df_ind['close'], length=length)
