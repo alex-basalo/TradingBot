@@ -1,7 +1,7 @@
 """
-Vollstaendige Ergebnis-Dokumentation eines Walk-Forward-Laufs.
+Vollständige Ergebnis-Dokumentation eines Walk-Forward-Laufs.
 
-Reines Post-Processing auf den fertigen Listen (Fold-Logs, Trades) – veraendert
+Reines Post-Processing auf den fertigen Listen (Fold-Logs, Trades) – verändert
 weder Trades noch Zufallssequenzen und kann das Ergebnis nicht beeinflussen.
 """
 
@@ -21,13 +21,13 @@ class ReportGenerator:
     """
     Erzeugte Artefakte je Lauf (Prefix = EXPERIMENT_NAME):
         {name}_Summary.json      - alle Kennzahlen + Metadaten
-        {name}_Trades.csv        - vollstaendige Trade-Liste (Audit + Monte-Carlo)
+        {name}_Trades.csv        - vollständige Trade-Liste (Audit + Monte-Carlo)
         {name}_FoldLog.csv       - PnL, CB-Hits, Cut-Short je Fold
-        {name}_AssetSummary.csv  - aggregierter PnL je Waehrungspaar
+        {name}_AssetSummary.csv  - aggregierter PnL je Währungspaar
         {name}_Equity.png        - Equity-Kurve (OOS)
         {name}_Underwater.png    - Drawdown-Verlauf
         {name}_FoldPnL.png       - Balkendiagramm der Fold-Ergebnisse
-        runs_comparison.csv      - eine Zeile je Lauf (wird angehaengt)
+        runs_comparison.csv      - eine Zeile je Lauf (wird angehängt)
     """
 
     TRADING_DAYS = 252
@@ -35,7 +35,7 @@ class ReportGenerator:
     # ---------------------------------------------------------------- Helfer
     @staticmethod
     def _pnl(t):
-        """PnL eines Trade-Tupels: R-Vielfaches * Risiko - Gebuehr."""
+        """PnL eines Trade-Tupels: R-Vielfaches * Risiko - Gebühr."""
         return (t[2] * t[3]) - t[4]
 
     @staticmethod
@@ -48,7 +48,7 @@ class ReportGenerator:
 
     @staticmethod
     def _daily_equity(trades, start_capital):
-        """Taegliche Equity-Kurve (realisierter PnL je Ausstiegstag)."""
+        """Tägliche Equity-Kurve (realisierter PnL je Ausstiegstag)."""
         if not trades:
             return pd.Series(dtype=float)
         rows = [(pd.to_datetime(t[1]), ReportGenerator._pnl(t)) for t in trades]
@@ -104,7 +104,7 @@ class ReportGenerator:
     def generate(name, fold_logs, asset_fold_records, all_oos_trades,
                  config_dict, shift_events=None, universe_size=None,
                  data_span=(None, None)):
-        """Schreibt Summary, Tabellen, Vergleichszeile und Plots fuer einen Lauf."""
+        """Schreibt Summary, Tabellen, Vergleichszeile und Plots für einen Lauf."""
         shift_events = shift_events or []
         start_capital = float(config_dict.get("START_CAPITAL", 10000.0))
 

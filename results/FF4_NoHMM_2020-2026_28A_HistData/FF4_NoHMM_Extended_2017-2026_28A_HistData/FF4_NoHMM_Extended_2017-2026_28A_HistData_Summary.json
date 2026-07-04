@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "experiment_name": "FF4_NoHMM_Extended_2017-2026_28A_HistData",
+    "generated_utc": "2026-07-03T06:26:03+00:00",
+    "git_commit": "n/a",
+    "data_dir": "HistData_H1",
+    "data_start_filter": "2017-01-01",
+    "data_end_filter": "2026-03-31",
+    "banned_assets": [],
+    "data_span_actual": [
+      "2017-01-02 02:00:00",
+      "2026-03-31 00:00:00"
+    ],
+    "universe_size": 28,
+    "assets_traded": 28,
+    "seed_band": "42..51",
+    "versions": {
+      "optuna": "4.8.0",
+      "hmmlearn": "0.3.3",
+      "pandas": "3.0.1",
+      "numpy": "2.2.6",
+      "pandas_ta": "0.4.71b0",
+      "scikit-learn": "1.8.0"
+    }
+  },
+  "performance": {
+    "net_profit_usd": 44181.04,
+    "total_return_pct": 441.81,
+    "cagr_pct": 23.69,
+    "sharpe_daily_annualized": 1.03,
+    "sortino_daily_annualized": 1.53,
+    "profit_factor": 1.555,
+    "win_rate_pct": 53.79,
+    "n_trades": 3558,
+    "first_entry": "2018-04-03 15:00:00",
+    "last_exit": "2026-03-16 13:00:00"
+  },
+  "drawdown": {
+    "max_dd_abs": 2513.67,
+    "max_dd_pct": 11.94,
+    "max_dd_duration_days": 161,
+    "recovery_days": 128
+  },
+  "folds": {
+    "n_folds": 67,
+    "profitable_folds": 25,
+    "profitable_folds_pct": 37.3134328358209,
+    "best_fold": 16069.517886915786,
+    "worst_fold": -1259.201788892934,
+    "median_fold": 0.0,
+    "mean_fold": 659.418433760511,
+    "std_fold": 2324.2157445868165
+  },
+  "safeguards": {
+    "seed_trailing_cb_hits": 277,
+    "fold_brake_hits": 5,
+    "dead_seed_stop_hits": 27,
+    "dynamic_shifts_total": 32,
+    "cash_folds": 17,
+    "per_asset_cap_hits": 143
+  },
+  "config": {
+    "EXPERIMENT_NAME": "FF4_NoHMM_Extended_2017-2026_28A_HistData",
+    "RAW_DATA_DIR": "HistData_H1",
+    "DATA_START": "2017-01-01",
+    "DATA_END": "2026-03-31",
+    "BANNED_ASSETS": [],
+    "USE_HMM_FILTER": false,
+    "USE_NEIGHBOR_TEST": true,
+    "USE_FOLD_BRAKE": true,
+    "MAX_OPEN_TRADES": 10,
+    "MAX_LEVERAGE": 30.0,
+    "TRAIN_MONTHS": 15,
+    "INNER_VAL_MONTHS": 3,
+    "TEST_MONTHS": 2,
+    "BASE_SEED": 42,
+    "NUM_ENSEMBLES": 10,
+    "MIN_TRAIN_SHARPE": 0.05,
+    "MAX_OOS_LOSS_PER_ASSET": -200.0,
+    "HMM_STATES": 2,
+    "HMM_ITERATIONS": 500,
+    "TRIALS_PER_FOLD": 250,
+    "MIN_TRADES_PER_ASSET": 1,
+    "MIN_ACTIVE_ASSETS_PERCENT": 0.1,
+    "OPT_SWING_LEN": [
+      130,
+      240
+    ],
+    "OPT_ZONE_TOL_SWING": [
+      0.1,
+      0.8
+    ],
+    "OPT_RSI_LEN": [
+      14,
+      28
+    ],
+    "OPT_RSI_OVERSOLD": [
+      20,
+      35
+    ],
+    "OPT_RSI_OVERBOUGHT": [
+      65,
+      80
+    ],
+    "OPT_RRR_SR": [
+      1.0,
+      1.5
+    ],
+    "OPT_SL_MULT_SR": [
+      1.5,
+      3.0
+    ],
+    "START_CAPITAL": 10000.0,
+    "RISK_PER_TRADE": 60.0,
+    "FEE_RATE": 3.5e-05,
+    "SL_SLIPPAGE": 0.1,
+    "SPREAD_TRIGGER": 0.0002
+  }
+}

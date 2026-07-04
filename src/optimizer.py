@@ -14,16 +14,16 @@ from indicators import IndicatorEngine
 
 class FoldOptimizer:
     """
-    Optimierungs-Engine zur Durchfuehrung der Vektor-Backtests und der Parameterfindung
-    fuer ein isoliertes Walk-Forward-Fenster (Fold) mittels Optuna (TPE).
+    Optimierungs-Engine zur Durchführung der Vektor-Backtests und der Parameterfindung
+    für ein isoliertes Walk-Forward-Fenster (Fold) mittels Optuna (TPE).
     """
     def __init__(self, data_dict: dict, val_start=None):
         self.data_dict = data_dict
         self.val_start = val_start
 
     def _run_vectorized_backtest(self, df: pd.DataFrame, params: dict, valid_start=None, asset_name: str = "") -> list:
-        """ Fuehrt die Vektor-Simulation der Preisgeometrie, Momentum-Hooks und Orderausfuehrung durch. """
-        # Waehrungsanpassung fuer korrekte Notional-Werte (JPY Fix)
+        """ Führt die Vektor-Simulation der Preisgeometrie, Momentum-Hooks und Orderausführung durch. """
+        # Währungsanpassung für korrekte Notional-Werte (JPY Fix)
         is_jpy = "JPY" in asset_name.upper()
         quote_mult = 100.0 if is_jpy else 1.0
 
@@ -52,12 +52,12 @@ class FoldOptimizer:
         sl_mult = params['sl_multiplier']
         rrr = params['rrr']
 
-        # Dynamische Zonentoleranz fuer Entries
+        # Dynamische Zonentoleranz für Entries
         zone_tol = params.get('zone_tol', 0.3)
         eff_zone_upper = zone_upper - (atrs * zone_tol)
         eff_zone_lower = zone_lower + (atrs * zone_tol)
 
-        # 3-Kerzen Momentum Gedaechtnis (Hook)
+        # 3-Kerzen Momentum Gedächtnis (Hook)
         oversold_level = params.get('mom_oversold', 30)
         overbought_level = params.get('mom_overbought', 70)
         mom_buy_raw = ((momentum > oversold_level) & (np.roll(momentum, 1) <= oversold_level))
@@ -73,8 +73,13 @@ class FoldOptimizer:
         bearish_rejection_memory = pd.Series(bearish_rejection_raw).rolling(2).max().fillna(0).values == 1
 
         # Finale Synthese des S/R Signals
-        long_sig = (regimes == t_regime) & mom_buy_memory & bullish_rejection_memory & crash_protect
-        short_sig = (regimes == t_regime) & mom_sell_memory & bearish_rejection_memory & crash_protect
+        # Regimefilter (Kat. C) ist per Schalter deaktivierbar (FF4-Ablation).
+        if CONFIG["USE_HMM_FILTER"]:
+            regime_ok = (regimes == t_regime)
+        else:
+            regime_ok = np.ones(len(regimes), dtype=bool)
+        long_sig = regime_ok & mom_buy_memory & bullish_rejection_memory & crash_protect
+        short_sig = regime_ok & mom_sell_memory & bearish_rejection_memory & crash_protect
 
         long_ent, short_ent = np.roll(long_sig, 1), np.roll(short_sig, 1)
         long_ent[0], short_ent[0] = False, False
@@ -99,7 +104,7 @@ class FoldOptimizer:
                     min_sl_dist = candidate_entry * 0.001
                     temp_sl_dist = max(atrs[i-1] * sl_mult, min_sl_dist)
 
-                    # Proximity Filter: Unterdrueckt spaete Entries
+                    # Proximity Filter: Unterdrückt späte Entries
                     max_allowed_distance = temp_sl_dist * 0.6
                     if candidate_type == 1 and (candidate_entry - zone_lower[i-1]) > max_allowed_distance: continue
                     if candidate_type == -1 and (zone_upper[i-1] - candidate_entry) > max_allowed_distance: continue
@@ -117,7 +122,7 @@ class FoldOptimizer:
                     current_notional = (actual_pos_size * entry_price) / quote_mult
                     actual_fee = current_notional * CONFIG["FEE_RATE"] * 2
 
-                    # Harter Gebuehren-Filter
+                    # Harter Gebühren-Filter
                     if actual_fee > (CONFIG["RISK_PER_TRADE"] * 0.10):
                         in_trade = False
                         continue
@@ -172,7 +177,7 @@ class FoldOptimizer:
         return trade_returns
 
     def objective(self, trial: optuna.Trial) -> float:
-        """ Bewertet die statistische Robustheit einer Parameterkombination fuer Optuna. """
+        """ Bewertet die statistische Robustheit einer Parameterkombination für Optuna. """
         cat_a_length = trial.suggest_int('swing_len', *CONFIG["OPT_SWING_LEN"], step=4)
         zone_tol = trial.suggest_float('zone_tol_swing', *CONFIG["OPT_ZONE_TOL_SWING"], step=0.1)
         cat_b_length = trial.suggest_int('rsi_len', *CONFIG["OPT_RSI_LEN"], step=2)
@@ -299,9 +304,13 @@ class FoldOptimizer:
 
             return float(robust_score)
 
-        # Neighborhood Test zur Validierung von Parametertaelern
+        # Neighborhood Test zur Validierung von Parametertälern
         score_base = evaluate_parameter_set(base_params, trial_to_update=trial)
         if score_base < 0.1: return float(score_base)
+
+        # Nachbarschaftstest ist per Schalter deaktivierbar (FF4-Ablation).
+        if not CONFIG["USE_NEIGHBOR_TEST"]:
+            return float(score_base)
 
         fast_params = base_params.copy()
         fast_params['cat_a_length'] = max(10, int(base_params['cat_a_length'] * 0.90))
