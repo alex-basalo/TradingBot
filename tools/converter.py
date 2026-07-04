@@ -2,7 +2,7 @@
 Datenaufbereitung: HistData-M1-Rohdaten -> H1-CSVs.
 
 Durchsucht den Eingabeordner (inkl. Unterordner) nach HistData-M1-Dateien
-(Excel/CSV/TXT), gruppiert sie automatisch nach Waehrungspaar, fuegt alle
+(Excel/CSV/TXT), gruppiert sie automatisch nach Währungspaar, fügt alle
 Jahre zusammen, aggregiert auf Stundenkerzen (OHLC + Volumen) und schreibt je
 Paar eine Datei `{PAAR}_H1.csv` in den Ausgabeordner.
 
@@ -21,7 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 # --- Pfade (relativ zum Projekt-Wurzelverzeichnis; bei Bedarf anpassen) ---
-INPUT_FOLDER = "HistData_M1"    # enthaelt die M1-Rohdaten (auch in Unterordnern)
+INPUT_FOLDER = "HistData_M1"    # enthält die M1-Rohdaten (auch in Unterordnern)
 OUTPUT_FOLDER = "HistData_H1"   # Zielordner; identisch zu CONFIG["RAW_DATA_DIR"]
 
 
@@ -44,12 +44,12 @@ def process_all_pairs(input_folder, output_folder):
 
     print(f"{len(all_files)} Dateien gefunden (Excel & CSV). Starte Analyse...")
 
-    # 2. Dateien automatisch nach Waehrungspaar gruppieren
+    # 2. Dateien automatisch nach Währungspaar gruppieren
     files_by_pair = defaultdict(list)
     for file in all_files:
         filename = os.path.basename(file)
         parts = filename.split('_')
-        # Sucht nach dem 6-stelligen Waehrungspaar im Dateinamen (z.B. EURUSD)
+        # Sucht nach dem 6-stelligen Währungspaar im Dateinamen (z.B. EURUSD)
         pair = next((part for part in parts if len(part) == 6 and part.isalpha()), "UNKNOWN")
         files_by_pair[pair].append(file)
 
@@ -84,14 +84,14 @@ def process_all_pairs(input_folder, output_folder):
         if not df_list:
             continue
 
-        # 4. Alle Jahre des Waehrungspaares zusammenfuegen (egal ob Excel oder CSV)
+        # 4. Alle Jahre des Währungspaares zusammenfügen (egal ob Excel oder CSV)
         combined_df = pd.concat(df_list)
 
         # 5. Datum umwandeln und als Index setzen
         # 'errors="coerce"' wandelt Schrott-Zeilen (z.B. Copyright-Texte) in NaT um
         combined_df['datetime'] = pd.to_datetime(combined_df['datetime'], format='%Y%m%d %H%M%S', errors='coerce')
 
-        # Alle Zeilen ohne gueltiges Datum loeschen (wirft Textzeilen raus)
+        # Alle Zeilen ohne gültiges Datum löschen (wirft Textzeilen raus)
         combined_df.dropna(subset=['datetime'], inplace=True)
 
         # Doppelte Zeitstempel entfernen und chronologisch sortieren
@@ -99,7 +99,7 @@ def process_all_pairs(input_folder, output_folder):
         combined_df.set_index('datetime', inplace=True)
         combined_df.sort_index(inplace=True)
 
-        # 6. Auf H1 resampeln und leere Phasen (Wochenenden) loeschen
+        # 6. Auf H1 resampeln und leere Phasen (Wochenenden) löschen
         df_h1 = combined_df.resample('1h').agg(aggregation_dict)
         df_h1.dropna(inplace=True)
 
