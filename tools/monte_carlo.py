@@ -1,11 +1,11 @@
 """
 Monte-Carlo-Robustheitsanalyse auf Basis der realisierten OOS-Trades eines Laufs.
 
-Bootstrapping (Ziehen mit Zuruecklegen) der tatsaechlich realisierten Trade-PnLs
+Bootstrapping (Ziehen mit Zurücklegen) der tatsächlich realisierten Trade-PnLs
 aus der {NAME}_Trades.csv. Dadurch bleibt das reale, von der State Machine
 skalierte Risiko je Trade erhalten; lediglich die Reihenfolge der Trades wird
-zufaellig neu gewuerfelt. Geschaetzt werden Endkapital-, Drawdown- und
-Ruin-Verteilung ueber viele Pfade.
+zufällig neu gewürfelt. Geschätzt werden Endkapital-, Drawdown- und
+Ruin-Verteilung über viele Pfade.
 """
 
 import os
@@ -55,7 +55,7 @@ def run_real_monte_carlo():
     print(f"Simuliere {SIMULATIONS} Pfade aus {n_trades} realisierten Trades...")
 
     for i in range(SIMULATIONS):
-        # Bootstrapping: Ziehen mit Zuruecklegen der realisierten PnLs
+        # Bootstrapping: Ziehen mit Zurücklegen der realisierten PnLs
         shuffled = random.choices(real_pnls.tolist(), k=n_trades)
 
         balance, peak, mdd = START_CAPITAL, START_CAPITAL, 0.0
