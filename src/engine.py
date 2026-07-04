@@ -2,7 +2,7 @@
 Orchestrierung der sequenziellen Walk-Forward-Analyse.
 
 Steuert Datafeed, Multi-Seed-Ensembles, das State-Machine-Risikomanagement und
-den globalen Circuit Breaker; stoesst am Ende die Report-Erzeugung an.
+den globalen Circuit Breaker; stößt am Ende die Report-Erzeugung an.
 """
 
 import os
@@ -22,13 +22,13 @@ from reporting import ReportGenerator
 class WalkForwardEngine:
     """
     Master-Klasse zur Orchestrierung der sequenziellen Walk-Forward-Analyse.
-    Ueberwacht den Datafeed, steuert die Multi-Seed Ensembles und wendet das
+    Überwacht den Datafeed, steuert die Multi-Seed Ensembles und wendet das
     State-Machine Risikomanagement sowie den globalen Circuit Breaker an.
     """
 
     @staticmethod
     def apply_portfolio_limit(trades_list, max_concurrent):
-        """ Sichert die Margin-Limitierungen ueber das gesamte Portfolio. """
+        """ Sichert die Margin-Limitierungen über das gesamte Portfolio. """
         if not trades_list: return []
         trades_with_tiebreaker = [(t[0], random.random(), t) for t in trades_list]
         trades_with_tiebreaker.sort(key=lambda x: (x[0], x[1]))
@@ -321,7 +321,7 @@ class WalkForwardEngine:
 
                 dead_seeds_now = sum(1 for dt in seed_death_times if dt <= t[1])
 
-                if global_fold_pnl <= MAX_FOLD_DRAWDOWN:
+                if CONFIG["USE_FOLD_BRAKE"] and global_fold_pnl <= MAX_FOLD_DRAWDOWN:
                     print(f"    🚨 GLOBAL FOLD STOP HIT! PnL fiel auf {global_fold_pnl:.2f} $.")
                     fold_cb_hit = True
                     premature_end_time = t[1]
@@ -352,8 +352,8 @@ class WalkForwardEngine:
                     print(f"  => 🔄 FOLD VORZEITIG BEENDET am {premature_end_time}. Optimiere sofort neu!")
                     curr_start = new_start
                 else:
-                    # Endlosschleifen-Schutz: Re-Anchoring wuerde NICHT vorruecken
-                    # -> regulaerer Schritt erzwingen, damit die WFA terminiert.
+                    # Endlosschleifen-Schutz: Re-Anchoring würde NICHT vorrücken
+                    # -> regulärer Schritt erzwingen, damit die WFA terminiert.
                     print(f"  => [!] Dynamic Shift ohne Fortschritt am {premature_end_time}. Regulaerer Schritt erzwungen.")
                     curr_start += relativedelta(months=CONFIG["TEST_MONTHS"])
             else:
