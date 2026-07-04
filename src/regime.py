@@ -1,5 +1,5 @@
 """
-Unueberwachte Regime-Erkennung mittels Hidden-Markov-Modell (Kategorie C).
+Unüberwachte Regime-Erkennung mittels Hidden-Markov-Modell (Kategorie C).
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ from config import CONFIG
 
 class MarketRegimeDetector:
     """
-    Kapselt die unueberwachte Regime-Erkennung mittels eines Hidden-Markov-Modells (HMM).
+    Kapselt die unüberwachte Regime-Erkennung mittels eines Hidden-Markov-Modells (HMM).
     Dient als richtungsneutraler Marktphasen-Filter (Kategorie C).
     """
     def __init__(self, random_state: int = 42):
@@ -23,7 +23,7 @@ class MarketRegimeDetector:
         self.state_map = {}
 
     def _calculate_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ Berechnet geometrische Merkmale fuer das HMM (Choppiness, SMA-Distanz, ATR). """
+        """ Berechnet geometrische Merkmale für das HMM (Choppiness, SMA-Distanz, ATR). """
         df_feat = df.copy()
         df_feat['chop'] = ta.chop(df_feat['high'], df_feat['low'], df_feat['close'], length=14)
 
@@ -34,7 +34,7 @@ class MarketRegimeDetector:
         return df_feat.ffill().fillna(0)
 
     def fit(self, df_train: pd.DataFrame):
-        """ Trainiert das Modell ueber den Baum-Welch-Algorithmus auf In-Sample-Daten. """
+        """ Trainiert das Modell über den Baum-Welch-Algorithmus auf In-Sample-Daten. """
         df_features = self._calculate_features(df_train)
         X = df_features[['chop', 'dist_sma']].values
 
@@ -49,7 +49,7 @@ class MarketRegimeDetector:
             self.best_model = None
 
     def predict_iterative(self, df: pd.DataFrame, step: int = 24) -> pd.DataFrame:
-        """ Generiert rollierend Viterbi-Zustandsschaetzungen zur Vermeidung von Vorausschau-Bias. """
+        """ Generiert rollierend Viterbi-Zustandsschätzungen zur Vermeidung von Vorausschau-Bias. """
         df_features = self._calculate_features(df)
         X = df_features[['chop', 'dist_sma']].values
         n = len(df)
