@@ -1,7 +1,7 @@
 """
 Globale System-Konfiguration und Logger-Setup.
 
-Dieses Modul kapselt ausschliesslich die Konfiguration. Es importiert keine
+Dieses Modul kapselt ausschließlich die Konfiguration. Es importiert keine
 projekteigenen Module und ist daher die unterste Schicht: alle anderen Module
 importieren CONFIG von hier.
 """
@@ -15,17 +15,19 @@ import optuna
 # GLOBALE SYSTEM-KONFIGURATION
 # =================================================================================
 CONFIG = {
-    "EXPERIMENT_NAME": "FF1_Main_2020-2026_28A_HistData",
+    "EXPERIMENT_NAME": "FF1_Main_2020-2026_23A_HistData",
     "RAW_DATA_DIR": "HistData_H1",
 
-    "DATA_START": "2020-03-31",
+    "DATA_START": "2020-03-31",  
     "DATA_END":   "2026-03-31",
 
     # Assets, die für den Lauf ignoriert/gebannt werden sollen.
-    # Dateibasisname OHNE ".csv" und OHNE das Suffix "_H1" (so, wie der Name
-    # nach dem Einlesen in load_all_data heisst, z. B. "EURUSD_merged").
-    # Leere Liste = alle gefundenen Paare werden gehandelt.
     "BANNED_ASSETS": [],
+
+    # --- Ablations-Schalter (FF4)
+    "USE_HMM_FILTER": True,      
+    "USE_NEIGHBOR_TEST": True,   
+    "USE_FOLD_BRAKE": True,      
 
     "MAX_OPEN_TRADES": 10,
     "MAX_LEVERAGE": 30.0,
@@ -35,7 +37,7 @@ CONFIG = {
     "INNER_VAL_MONTHS": 3,
     "TEST_MONTHS": 2,
 
-    "BASE_SEED": 62,
+    "BASE_SEED": 42,
     "NUM_ENSEMBLES": 10,
 
     # Robustheits-Schwellenwerte
@@ -51,7 +53,7 @@ CONFIG = {
     "MIN_TRADES_PER_ASSET": 1,
     "MIN_ACTIVE_ASSETS_PERCENT": 0.1,
 
-    # Suchraeume fuer Optuna
+    # Suchräume für Optuna
     "OPT_SWING_LEN": (130, 240),
     "OPT_ZONE_TOL_SWING": (0.1, 0.8),
     "OPT_RSI_LEN": (14, 28),
