@@ -1,135 +1,159 @@
 """
-Monte-Carlo-Robustheitsanalyse auf Basis der realisierten OOS-Trades eines Laufs.
+Monte-Carlo-Robustheitsanalyse mit drei Resampling-Verfahren.
 
-Bootstrapping (Ziehen mit Zurücklegen) der tatsächlich realisierten Trade-PnLs
-aus der {NAME}_Trades.csv. Dadurch bleibt das reale, von der State Machine
-skalierte Risiko je Trade erhalten; lediglich die Reihenfolge der Trades wird
-zufällig neu gewürfelt. Geschätzt werden Endkapital-, Drawdown- und
-Ruin-Verteilung über viele Pfade.
+METHODE (per METHOD wählbar):
+  "iid"   - Ziehen einzelner Trades mit Zuruecklegen. Zerstört die zeitliche
+            Struktur; unterschaetzt den Drawdown systematisch. Nur als
+            Referenz/Vergleich, nicht als Risikomaß geeignet.
+  "block" - Ziehen zusammenhängender Blöcke von Trades. Erhält die lokale
+            Autokorrelation und damit die Verlustclusterung.
+  "fold"  - Ziehen ganzer Folds mit Zurücklegen. Erhält die komplette interne
+            Struktur jedes Walk-Forward-Fensters und bildet die Unsicherheit
+            über die Fold-Auswahl ab. 
+
+Erfordert für METHOD="fold" zusätzlich die {NAME}_FoldLog.csv.
 """
 
 import os
-import random
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 # --- SETUP ---
-TRADE_FILE = "FF1_Main_2020-2026_28A_HistData_Trades.csv"   # Trades-CSV des Laufs
+TRADE_FILE = "FF1_2020-2026_28A_HistData_Trades.csv"
+FOLD_FILE = "FF1_2020-2026_28A_HistData_FoldLog.csv"   # nur für METHOD="fold"
+METHOD = "block"          # "fold" | "block" | "iid"
+BLOCK_SIZE = 50          # nur für METHOD="block"
 START_CAPITAL = 10000.0
 SIMULATIONS = 10000
+SEED = 42
 
 
-def _load_pnls(path: str) -> np.ndarray:
-    """Liest die realisierten Trade-PnLs robust aus der Trades-CSV."""
+def load_pnls(path):
     df = pd.read_csv(path)
     if "pnl_usd" in df.columns:
-        return df["pnl_usd"].to_numpy(dtype=float)
-    # Fallback: aus den Rohspalten rekonstruieren (r_mult * risk_usd - fee_usd)
-    needed = {"r_mult", "risk_usd", "fee_usd"}
-    if needed.issubset(df.columns):
-        return (df["r_mult"] * df["risk_usd"] - df["fee_usd"]).to_numpy(dtype=float)
-    raise KeyError(
-        "Weder 'pnl_usd' noch ('r_mult','risk_usd','fee_usd') in der CSV gefunden."
-    )
+        pnl = df["pnl_usd"].to_numpy(dtype=float)
+    else:
+        pnl = (df["r_mult"] * df["risk_usd"] - df["fee_usd"]).to_numpy(dtype=float)
+    return pnl
 
 
-def run_real_monte_carlo():
+def load_fold_pnls(path):
+    df = pd.read_csv(path)
+    return df["Net_Profit_USD"].to_numpy(dtype=float)
+
+
+def path_stats(pnls):
+    """Endkapital und maximaler Drawdown eines Pfades."""
+    equity = START_CAPITAL + np.cumsum(pnls)
+    peak = np.maximum.accumulate(equity)
+    dd = peak - equity
+    return equity[-1], float(dd.max()), equity
+
+
+def simulate(rng, source, method):
+    if method == "iid":
+        idx = rng.randint(0, len(source), size=len(source))
+        return source[idx]
+    if method == "block":
+        n = len(source)
+        n_blocks = int(np.ceil(n / BLOCK_SIZE))
+        starts = rng.randint(0, max(1, n - BLOCK_SIZE), size=n_blocks)
+        seq = np.concatenate([source[s:s + BLOCK_SIZE] for s in starts])
+        return seq[:n]
+    if method == "fold":
+        idx = rng.randint(0, len(source), size=len(source))
+        return source[idx]
+    raise ValueError(f"unbekannte METHOD: {method}")
+
+
+def main():
     if not os.path.exists(TRADE_FILE):
         print(f"Fehler: '{TRADE_FILE}' nicht gefunden.")
         return
+    name = os.path.basename(TRADE_FILE).replace("_Trades.csv", "")
 
-    experiment_name = os.path.basename(TRADE_FILE).replace("_Trades.csv", "")
-    real_pnls = _load_pnls(TRADE_FILE)
-    n_trades = len(real_pnls)
-    if n_trades == 0:
-        print("Keine Trades in der Datei.")
-        return
+    if METHOD == "fold":
+        if not os.path.exists(FOLD_FILE):
+            print(f"Fehler: '{FOLD_FILE}' nicht gefunden (für METHOD='fold' nötig).")
+            return
+        source = load_fold_pnls(FOLD_FILE)
+        unit = "Folds"
+    else:
+        source = load_pnls(TRADE_FILE)
+        unit = "Trades"
 
-    final_balances, max_drawdowns, all_paths = [], [], []
-    best_path, worst_path = [], []
-    max_balance, min_balance = -float("inf"), float("inf")
+    n_units = len(source)
+    real_total = float(source.sum())
+    rng = np.random.RandomState(SEED)
 
-    print(f"Simuliere {SIMULATIONS} Pfade aus {n_trades} realisierten Trades...")
-
+    finals, dds, paths = [], [], []
+    print(f"Simuliere {SIMULATIONS} Pfade | Methode: {METHOD} | {n_units} {unit}...")
     for i in range(SIMULATIONS):
-        # Bootstrapping: Ziehen mit Zurücklegen der realisierten PnLs
-        shuffled = random.choices(real_pnls.tolist(), k=n_trades)
+        seq = simulate(rng, source, METHOD)
+        fin, dd, eq = path_stats(seq)
+        finals.append(fin)
+        dds.append(dd)
+        if i < 150:
+            paths.append(eq)
 
-        balance, peak, mdd = START_CAPITAL, START_CAPITAL, 0.0
-        path = [balance]
-        for pnl in shuffled:
-            balance += pnl
-            path.append(balance)
-            if balance > peak:
-                peak = balance
-            dd = peak - balance
-            if dd > mdd:
-                mdd = dd
+    finals, dds = np.array(finals), np.array(dds)
 
-        final_balances.append(balance)
-        max_drawdowns.append(mdd)
+    # --- Kennzahlen ---
+    p_loss = float((finals < START_CAPITAL).mean() * 100)   # Anteil Pfade mit Verlust
+    p_ruin = float((finals <= 0).mean() * 100)
+    q05, q50, q95 = np.percentile(finals, [5, 50, 95])
+    dd_mean, dd_95 = float(dds.mean()), float(np.percentile(dds, 95))
 
-        if i < 150:                       # nur eine Stichprobe fuer den Hintergrund
-            all_paths.append(path)
-        if balance > max_balance:
-            max_balance, best_path = balance, path.copy()
-        if balance < min_balance:
-            min_balance, worst_path = balance, path.copy()
+    print("\n=== MONTE-CARLO-STATISTIK ===")
+    print(f"  Methode                : {METHOD} ({n_units} {unit} je Pfad)")
+    print(f"  Realer Endstand        : {START_CAPITAL + real_total:,.0f} $")
+    print(f"  Median Endstand        : {q50:,.0f} $")
+    print(f"  5%-Quantil  Endstand   : {q05:,.0f} $")
+    print(f"  95%-Quantil Endstand   : {q95:,.0f} $")
+    print(f"  Anteil Pfade mit Verlust: {p_loss:.2f} %")
+    print(f"  Ruinwahrscheinlichkeit : {p_ruin:.4f} %")
+    print(f"  Ø Max-Drawdown         : {dd_mean:,.0f} $")
+    print(f"  95%-Quantil Max-DD     : {dd_95:,.0f} $")
 
-    # --- AUSWERTUNG ---
-    prob_ruin = len([b for b in final_balances if b <= 0]) / SIMULATIONS * 100
-    avg_dd = float(np.mean(max_drawdowns))
-    perc_95_dd = float(np.percentile(max_drawdowns, 95))
-    avg_final = float(np.mean(final_balances))
+    # --- Grafik ---
+    plt.figure(figsize=(14, 7))
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda x, p: f"{x:,.0f} $"))
+    for p in paths:
+        plt.plot(p, color="gray", alpha=0.12, linewidth=0.9)
+    med_len = min(len(p) for p in paths)
+    med_path = np.median(np.array([p[:med_len] for p in paths]), axis=0)
+    plt.plot(med_path, color="blue", linewidth=2.2, label="Median-Pfad")
+    plt.axhline(START_CAPITAL, color="black", linestyle="--", linewidth=1.4,
+                label="Startkapital")
+    plt.axhline(START_CAPITAL + real_total, color="green", linestyle=":",
+                linewidth=1.8, label="realer Endstand")
 
-    print("\n=== MONTE CARLO STATISTIK ===")
-    print(f"Ruin-Wahrscheinlichkeit:      {prob_ruin:.4f} %")
-    print(f"Durchschn. Endkapital:        {avg_final:,.0f} $")
-    print(f"95%-Konfidenz Max-Drawdown:   {perc_95_dd:,.0f} $")
+    plt.title(f"Monte-Carlo-Simulation ({METHOD}-Bootstrap): {name} | {SIMULATIONS} Pfade",
+              fontsize=13, fontweight="bold")
+    plt.xlabel(unit)
+    plt.ylabel("Kontostand ($)")
+    plt.grid(True, linestyle="--", alpha=0.5)
+    plt.legend(loc="upper left")
 
-    # --- GRAFIK ---
-    plt.figure(figsize=(14, 8))
-    plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{x:,.0f} $"))
-
-    for p in all_paths:
-        plt.plot(p, color="gray", alpha=0.15, linewidth=1)
-
-    avg_path = np.mean(all_paths, axis=0)
-    plt.plot(avg_path, color="blue", linewidth=2.5, label="Ø Erwartungswert")
-    plt.plot(best_path, color="green", linewidth=2, label="Best Case")
-    plt.plot(worst_path, color="red", linewidth=2, label="Worst Case")
-    plt.axhline(START_CAPITAL, color="black", linestyle="--", linewidth=1.5)
-
-    plt.title(f"Monte-Carlo-Simulation: {experiment_name} | {SIMULATIONS} Pfade",
-              fontsize=14, fontweight="bold")
-    plt.xlabel("Anzahl der Trades", fontsize=12)
-    plt.ylabel("Kontostand ($)", fontsize=12)
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend(loc="upper right")
-
-    stats_text = (
-        f"--- MONTE CARLO STATISTIK ---\n"
-        f"Simulationen: {SIMULATIONS:,.0f}\n"
-        f"Trades je Pfad: {n_trades:,.0f}\n"
-        f"Totalverlust-Risiko: {prob_ruin:.4f} %\n\n"
-        f"Ø Max Drawdown: {avg_dd:,.0f} $\n"
-        f"95%-Konfidenz-DD: {perc_95_dd:,.0f} $\n\n"
-        f"Worst Case Endstand: {min_balance:,.0f} $\n"
-        f"Ø Erwarteter Endstand: {avg_final:,.0f} $\n"
-        f"Best Case Endstand: {max_balance:,.0f} $"
-    )
-    plt.figtext(0.12, 0.45, stats_text,
-                bbox=dict(facecolor="white", alpha=0.9, edgecolor="black"), fontsize=11)
+    stats = (f"Methode: {METHOD}-Bootstrap\n"
+             f"Simulationen: {SIMULATIONS:,}\n\n"
+             f"Median Endstand: {q50:,.0f} $\n"
+             f"5%-Quantil:  {q05:,.0f} $\n"
+             f"95%-Quantil: {q95:,.0f} $\n\n"
+             f"Pfade mit Verlust: {p_loss:.1f} %\n"
+             f"Ø Max-Drawdown: {dd_mean:,.0f} $\n"
+             f"95%-Quantil Max-DD: {dd_95:,.0f} $")
+    plt.figtext(0.14, 0.55, stats,
+                bbox=dict(facecolor="white", alpha=0.92, edgecolor="black"), fontsize=10)
 
     plt.tight_layout()
-    out = f"Monte_Carlo_{experiment_name}.png"
-    plt.savefig(out, dpi=300)
+    out = f"Monte_Carlo_{METHOD}_{name}.png"
+    plt.savefig(out, dpi=200)
     plt.close()
-    print(f"=> Grafik gespeichert als '{out}'")
+    print(f"\n=> Grafik gespeichert: {out}")
 
 
 if __name__ == "__main__":
-    run_real_monte_carlo()
+    main()

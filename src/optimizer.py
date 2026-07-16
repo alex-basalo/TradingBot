@@ -1,6 +1,6 @@
 """
 Optimierungs-Engine: Vektor-Backtest, mehrschichtige Fitnessfunktion mit
-Nachbarschaftstest und TPE-Optimierung fuer ein isoliertes Walk-Forward-Fenster.
+Nachbarschaftstest und TPE-Optimierung für ein isoliertes Walk-Forward-Fenster.
 """
 
 import numpy as np
@@ -22,7 +22,7 @@ class FoldOptimizer:
         self.val_start = val_start
 
     def _run_vectorized_backtest(self, df: pd.DataFrame, params: dict, valid_start=None, asset_name: str = "") -> list:
-        """ Führt die Vektor-Simulation der Preisgeometrie, Momentum-Hooks und Orderausführung durch. """
+        """ Führt die Vektor-Simulation der Preisgeometrie, Momentum-Hooks und Orderausfuehrung durch. """
         # Währungsanpassung für korrekte Notional-Werte (JPY Fix)
         is_jpy = "JPY" in asset_name.upper()
         quote_mult = 100.0 if is_jpy else 1.0
@@ -35,6 +35,14 @@ class FoldOptimizer:
         df_sim['atr_100'] = ta.atr(df_sim['high'], df_sim['low'], df_sim['close'], length=100)
         df_sim['vola_ratio'] = df_sim['atr_10'] / df_sim['atr_100'].replace(0, 1e-6)
         df_sim['atr_pct'] = (df_sim['atr_14'] / df_sim['close']) * 100
+
+        # Random-Entry-Baseline: Zufallszahlen vor dropna erzeugen
+        if CONFIG.get("USE_RANDOM_ENTRY", False):
+            _off = sum(ord(c) for c in asset_name) if asset_name else 0
+            _rng = np.random.RandomState(
+                (CONFIG.get("ENTRY_SEED", 0) * 100003 + _off) % (2**31 - 1))
+            df_sim['u_long']  = _rng.random_sample(len(df_sim))
+            df_sim['u_short'] = _rng.random_sample(len(df_sim))
 
         df_sim.dropna(inplace=True)
         if len(df_sim) < 100: return []
@@ -73,13 +81,47 @@ class FoldOptimizer:
         bearish_rejection_memory = pd.Series(bearish_rejection_raw).rolling(2).max().fillna(0).values == 1
 
         # Finale Synthese des S/R Signals
-        # Regimefilter (Kat. C) ist per Schalter deaktivierbar (FF4-Ablation).
         if CONFIG["USE_HMM_FILTER"]:
             regime_ok = (regimes == t_regime)
         else:
             regime_ok = np.ones(len(regimes), dtype=bool)
         long_sig = regime_ok & mom_buy_memory & bullish_rejection_memory & crash_protect
         short_sig = regime_ok & mom_sell_memory & bearish_rejection_memory & crash_protect
+
+        # Random-Entry-Baseline (Kontrolltest) --------------------------------
+        # Ersetzt ausschließlich die Bestätigungslogik (RSI-Momentum-Hook und Wick Rejection) durch Zufallssignale
+        if CONFIG.get("USE_RANDOM_ENTRY", False):
+            n_bars = len(long_sig)
+
+            # Eligibility: welche Kerzen würden den Proximity-Filter passieren?
+            open_next = np.roll(opens, -1)
+            sl_d      = np.maximum(atrs * sl_mult, open_next * 0.001)
+            max_dist  = sl_d * 0.6
+            elig_long  = (open_next - zone_lower) <= max_dist
+            elig_short = (zone_upper - open_next) <= max_dist
+            elig_long[-1]  = False          # letzte Kerze hat keinen Nachfolger
+            elig_short[-1] = False
+
+            # Risikofilter bleiben aktiv - sie sind keine Signallogik
+            pool_long  = elig_long  & regime_ok & crash_protect
+            pool_short = elig_short & regime_ok & crash_protect
+
+            # Ziehungsrate so kalibrieren, dass die erwartete Zahl der
+            # Zufallssignale der Zahl der echten Signale entspricht
+            p_long  = long_sig.sum()  / max(pool_long.sum(),  1)
+            p_short = short_sig.sum() / max(pool_short.sum(), 1)
+            p_long, p_short = min(p_long, 1.0), min(p_short, 1.0)
+
+            u_long  = df_sim['u_long'].values
+            u_short = df_sim['u_short'].values
+
+            long_sig  = (u_long  < p_long)  & pool_long
+            short_sig = (u_short < p_short) & pool_short
+
+            both = long_sig & short_sig     # nie gleichzeitig Long und Short
+            long_sig  = long_sig  & ~both
+            short_sig = short_sig & ~both
+        # ---------------------------------------------------------------------
 
         long_ent, short_ent = np.roll(long_sig, 1), np.roll(short_sig, 1)
         long_ent[0], short_ent[0] = False, False
@@ -197,7 +239,6 @@ class FoldOptimizer:
 
         def evaluate_parameter_set(test_params, trial_to_update=None):
             # Lazy import bricht den Zirkelbezug Optimizer <-> Engine auf
-            # (Modul ist zur Laufzeit bereits geladen; kein Re-Import-Overhead).
             from engine import WalkForwardEngine
 
             all_rets = []
@@ -308,7 +349,6 @@ class FoldOptimizer:
         score_base = evaluate_parameter_set(base_params, trial_to_update=trial)
         if score_base < 0.1: return float(score_base)
 
-        # Nachbarschaftstest ist per Schalter deaktivierbar (FF4-Ablation).
         if not CONFIG["USE_NEIGHBOR_TEST"]:
             return float(score_base)
 

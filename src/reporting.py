@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -48,13 +49,58 @@ class ReportGenerator:
 
     @staticmethod
     def _daily_equity(trades, start_capital):
-        """Tägliche Equity-Kurve (realisierter PnL je Ausstiegstag)."""
+        """Tägliche Equity-Kurve (realisierter PnL je Ausstiegstag), auf Kalendertagen."""
         if not trades:
             return pd.Series(dtype=float)
         rows = [(pd.to_datetime(t[1]), ReportGenerator._pnl(t)) for t in trades]
         df = pd.DataFrame(rows, columns=["exit", "pnl"]).set_index("exit").sort_index()
         daily = df["pnl"].resample("D").sum()
         return start_capital + daily.cumsum()
+
+    @staticmethod
+    def _risk_metrics(trades, start_capital, trading_days=252):
+        """Sharpe-Ratio, Sortino-Ratio und t-Statistik auf Basis der Geschäftstagsrenditen."""
+        out = {"sharpe": None, "sortino": None, "t_stat": None, "p_value": None}
+        if not trades:
+            return out
+
+        s = pd.Series([ReportGenerator._pnl(t) for t in trades], dtype=float)
+        s.index = pd.to_datetime([t[1] for t in trades])
+        daily_all = s.sort_index().resample("D").sum()
+        if len(daily_all) < 2:
+            return out
+
+        # Wochenend-PnL auf den nächsten Montag rollen
+        idx = daily_all.index
+        shift = np.where(idx.dayofweek < 5, 0, 7 - idx.dayofweek)
+        daily = daily_all.groupby(idx + pd.to_timedelta(shift, unit="D")).sum()
+
+        # Auf die vollständige Geschäftstagsachse ausdehnen (Lücken = 0.0)
+        daily = daily.reindex(
+            pd.bdate_range(daily.index.min(), daily.index.max()), fill_value=0.0)
+
+        rets = daily / start_capital
+        n = len(rets)
+        if n < 2:
+            return out
+
+        mu = float(rets.mean())
+        sd = float(rets.std(ddof=1))
+        if sd <= 0:
+            return out
+
+        out["sharpe"] = float(mu / sd * np.sqrt(trading_days))
+
+        downside = rets[rets < 0]
+        if len(downside) > 1:
+            dsd = float(downside.std(ddof=1))
+            if dsd > 0:
+                out["sortino"] = float(mu / dsd * np.sqrt(trading_days))
+
+        t_stat = mu / sd * np.sqrt(n)
+        out["t_stat"] = float(t_stat)
+        out["p_value"] = float(2.0 * (1.0 - stats.t.cdf(abs(t_stat), df=n - 1)))
+        return out
 
     @staticmethod
     def _drawdown_stats(equity_daily):
@@ -126,20 +172,21 @@ class ReportGenerator:
             cagr_pct = (((final_equity / start_capital) ** (1.0 / years) - 1.0) * 100
                         if final_equity > 0 else -100.0)
 
+            # Equity auf Kalendertagen: Basis für Drawdown und Grafiken
             eq_daily = ReportGenerator._daily_equity(all_oos_trades, start_capital)
-            rets = eq_daily.pct_change().dropna()
-            if len(rets) > 1 and rets.std() > 0:
-                sharpe = float(rets.mean() / rets.std() * np.sqrt(ReportGenerator.TRADING_DAYS))
-                downside = rets[rets < 0]
-                sortino = (float(rets.mean() / downside.std() * np.sqrt(ReportGenerator.TRADING_DAYS))
-                           if len(downside) > 1 and downside.std() > 0 else None)
-            else:
-                sharpe = sortino = None
+
+            # Risikoadjustierte Kennzahlen auf Geschäftstagen (s. _risk_metrics)
+            _rm = ReportGenerator._risk_metrics(all_oos_trades, start_capital,
+                                                ReportGenerator.TRADING_DAYS)
+            sharpe, sortino = _rm["sharpe"], _rm["sortino"]
+            t_stat, p_value = _rm["t_stat"], _rm["p_value"]
+
             dd_stats, dd_series = ReportGenerator._drawdown_stats(eq_daily)
         else:
             net_profit = total_return_pct = cagr_pct = 0.0
             win_rate = 0.0
             profit_factor = sharpe = sortino = None
+            t_stat = p_value = None
             dd_stats = {"max_dd_abs": 0.0, "max_dd_pct": 0.0,
                         "max_dd_duration_days": 0, "recovery_days": None}
             dd_series = None
@@ -220,6 +267,8 @@ class ReportGenerator:
                 "cagr_pct": round(cagr_pct, 2),
                 "sharpe_daily_annualized": round(sharpe, 3) if sharpe is not None else None,
                 "sortino_daily_annualized": round(sortino, 3) if sortino is not None else None,
+                "t_stat": round(t_stat, 3) if t_stat is not None else None,
+                "p_value": round(p_value, 4) if p_value is not None else None,
                 "profit_factor": pf_out,
                 "win_rate_pct": round(win_rate, 2),
                 "n_trades": n_trades,
@@ -245,6 +294,8 @@ class ReportGenerator:
             "cagr_pct": round(cagr_pct, 2),
             "sharpe": round(sharpe, 3) if sharpe is not None else None,
             "sortino": round(sortino, 3) if sortino is not None else None,
+            "t_stat": round(t_stat, 3) if t_stat is not None else None,
+            "p_value": round(p_value, 4) if p_value is not None else None,
             "profit_factor": pf_out, "win_rate": round(win_rate, 2),
             "n_trades": n_trades, "max_dd_abs": round(dd_stats["max_dd_abs"], 2),
             "max_dd_pct": round(dd_stats["max_dd_pct"], 2),
@@ -347,6 +398,8 @@ class ReportGenerator:
         print("=" * 85)
         print(f"  Net Profit : {net_profit:+,.2f} $   | CAGR: {cagr_pct:+.2f} %   "
               f"| Sharpe(d,ann): {summary['performance']['sharpe_daily_annualized']}")
+        print(f"  Signifikanz: t = {summary['performance']['t_stat']} "
+              f"| p = {summary['performance']['p_value']}")
         print(f"  Max DD     : {dd_stats['max_dd_abs']:,.2f} $ "
               f"({dd_stats['max_dd_pct']:.1f} %, {dd_stats['max_dd_duration_days']} Tage)")
         print(f"  Folds      : {fold_stats['n_folds']} "

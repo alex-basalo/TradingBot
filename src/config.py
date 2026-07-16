@@ -15,7 +15,7 @@ import optuna
 # GLOBALE SYSTEM-KONFIGURATION
 # =================================================================================
 CONFIG = {
-    "EXPERIMENT_NAME": "FF1_Main_2020-2026_23A_HistData",
+    "EXPERIMENT_NAME": "FF1_Main_2020-2026_28A_HistData",
     "RAW_DATA_DIR": "HistData_H1",
 
     "DATA_START": "2020-03-31",  
@@ -24,10 +24,14 @@ CONFIG = {
     # Assets, die für den Lauf ignoriert/gebannt werden sollen.
     "BANNED_ASSETS": [],
 
-    # --- Ablations-Schalter (FF4)
+    # Ablations-Schalter (FF4)
     "USE_HMM_FILTER": True,      
     "USE_NEIGHBOR_TEST": True,   
-    "USE_FOLD_BRAKE": True,      
+    "USE_FOLD_BRAKE": True, 
+
+    # Random-Entry-Baseline (Kontrolltest)
+    "USE_RANDOM_ENTRY": False,
+    "ENTRY_SEED": 1,   
 
     "MAX_OPEN_TRADES": 10,
     "MAX_LEVERAGE": 30.0,
