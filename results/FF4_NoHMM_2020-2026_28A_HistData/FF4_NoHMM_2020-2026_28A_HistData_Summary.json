@@ -27,13 +27,15 @@
     "net_profit_usd": 35617.34,
     "total_return_pct": 356.17,
     "cagr_pct": 38.03,
-    "sharpe_daily_annualized": 1.174,
-    "sortino_daily_annualized": 2.405,
+    "sharpe_daily_annualized": 1.529,
+    "sortino_daily_annualized": 2.595,
     "profit_factor": 1.488,
     "win_rate_pct": 52.88,
     "n_trades": 3317,
     "first_entry": "2021-06-30 06:00:00",
-    "last_exit": "2026-03-16 13:00:00"
+    "last_exit": "2026-03-16 13:00:00",
+    "t_stat": 3.374,
+    "p_value": 0.0008
   },
   "drawdown": {
     "max_dd_abs": 3024.03,
