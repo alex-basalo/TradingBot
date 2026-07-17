@@ -12,6 +12,7 @@ Walk-Forward-Analyse mit ereignisgesteuertem Fenster-Shifting.
 ```
 src/                Quellcode des Handelssystems (7 Module, siehe unten)
 tools/              Hilfsskripte: converter.py, monte_carlo.py
+tests/              Unittests (test_engine.py, test_optimizer.py)
 results/            je Durchlauf ein Unterordner mit allen Ausgabedateien
                     (Summary, Trades, FoldLog, AssetSummary, Grafiken)
 requirements.txt    gepinnte Abhängigkeiten (Reproduzierbarkeit)
@@ -24,18 +25,19 @@ HistData_H1/        H1-CSV-Dateien je Währungspaar (NICHT im Repo, s. u.)
 |------------------|------------------------|-------------------------------------------------------------|
 | `config.py`      | —                      | zentrale Konfiguration (`CONFIG`) + Logger-Setup            |
 | `indicators.py`  | `IndicatorEngine`      | Swing-Zonen (Kat. A), RSI-Momentum (Kat. B)                 |
-| `regime.py`      | `MarketRegimeDetector` | HMM-Regimeerkennung (Kat. C)                                |
+| `regime.py`      | `MarketRegimeDetector` | HMM-Regimeerkennung (Kat. C), look-ahead-frei               |
 | `optimizer.py`   | `FoldOptimizer`        | Vektor-Backtest, Fitnesssynthese, Nachbarschaftstest, TPE   |
 | `engine.py`      | `WalkForwardEngine`    | Orchestrierung, State Machine, Circuit Breaker, Datenladen  |
-| `reporting.py`   | `ReportGenerator`      | Kennzahlen, Tabellen, Grafiken, Vergleichszeile             |
+| `reporting.py`   | `ReportGenerator`      | Kennzahlen, Tabellen, Grafiken          |
 | `main.py`        | —                      | Einstiegspunkt (`python src/main.py`)                       |
 
 ### Hilfsskripte in `tools/`
 
-| Datei             | Zweck                                                                 |
-|-------------------|----------------------------------------------------------------------|
-| `converter.py`    | aggregiert HistData-M1-Rohdaten zu H1-CSVs (Datenaufbereitung)       |
-| `monte_carlo.py`  | Bootstrapping-Robustheitsanalyse auf einer `{NAME}_Trades.csv`       |
+| Datei             | Zweck                                                                          |
+|-------------------|--------------------------------------------------------------------------------|
+| `converter.py`    | aggregiert HistData-M1-Rohdaten zu H1-CSVs (Datenaufbereitung)                 |
+| `monte_carlo.py`  | Bootstrapping-Robustheitsanalyse (Fold-, Block- und Trade-Verfahren)           |
+
 
 ## Installation
 
@@ -91,6 +93,10 @@ Schalter:
 - `USE_HMM_FILTER` — Regimefilter (Kat. C) ein-/ausschalten (Ablation)
 - `USE_NEIGHBOR_TEST` — Nachbarschaftstest der Fitness ein-/ausschalten (Ablation)
 - `USE_FOLD_BRAKE` — globale Fold-Notbremse ein-/ausschalten (Ablation)
+- `USE_RANDOM_ENTRY` / `ENTRY_SEED` — Kontrolltest: ersetzt die Bestätigungslogik
+  (Momentum-Hook, Wick-Rejection) durch Zufallssignale gleicher Signalrate;
+  der übrige Risiko-Apparat bleibt unverändert. Für eine belastbare Aussage
+  mehrere Läufe mit verschiedenem `ENTRY_SEED`.
 
 Jeder Lauf erzeugt `{NAME}_Summary.json`, `{NAME}_Trades.csv`,
 `{NAME}_FoldLog.csv`, `{NAME}_AssetSummary.csv`, `{NAME}_Equity.png`,
@@ -100,14 +106,31 @@ Jeder Lauf erzeugt `{NAME}_Summary.json`, `{NAME}_Trades.csv`,
 
 ## Analyse
 
-`tools/monte_carlo.py` führt eine Bootstrapping-Robustheitsanalyse auf der
-`{NAME}_Trades.csv` eines Laufs durch (Endkapital-, Drawdown- und
-Ruin-Verteilung über 10.000 Pfade). Vor dem Start `TRADE_FILE` im Skript auf die
-gewünschte Trades-CSV setzen, dann `python tools/monte_carlo.py`.
+`tools/monte_carlo.py` führt eine Bootstrapping-Robustheitsanalyse auf den
+Ergebnissen eines Laufs durch (Endkapital-, Drawdown- und Verlustverteilung über
+10.000 Pfade). Über die Variable `METHOD` im Skript stehen drei Verfahren zur
+Verfügung: `fold` (Ziehung ganzer Walk-Forward-Fenster, für die Ergebnis­unsicherheit),
+`block` (Ziehung zusammenhängender Trade-Blöcke, für das Drawdown-Risiko) und
+`iid` (Ziehung einzelner Trades, nur als Referenz). Vor dem Start `TRADE_FILE`
+(und für `fold` zusätzlich `FOLD_FILE`) im Skript auf den gewünschten Lauf setzen,
+dann `python tools/monte_carlo.py`.
+
+## Tests
+
+Die Unittests in `tests/` sichern die Funktionen ab, deren Korrektheit
+unmittelbar in die berichteten Ergebnisse eingeht:
+
+- `test_engine.py` — Portfolio-Limit, Kennzahlenberechnung (PnL, Profit-Faktor,
+  Drawdown) und die risikoadjustierten Maße samt t-Statistik.
+- `test_optimizer.py` — Nachweis der Look-ahead-Freiheit der iterativen
+  Regimevorhersage sowie die konservative Intrabar-Auflösung (Stop-Loss vor
+  Take-Profit).
 
 ## Reproduzierbarkeit
 
 Die exakten Bibliotheksversionen sind in `requirements.txt` gepinnt und werden
-zusätzlich in jeder `_Summary.json` mitprotokolliert. Bei identischer Datenbasis,
-identischer `CONFIG` und identischen Versionen ist ein Lauf deterministisch
-reproduzierbar (feste Seeds je Optuna-Studie).
+zusätzlich in jeder `_Summary.json` mitprotokolliert; sofern das Projekt als
+Git-Repository vorliegt, wird zudem der Commit-Hash des Laufs festgehalten. Bei
+identischer Datenbasis, identischer `CONFIG` und identischen Versionen ist ein
+Lauf deterministisch reproduzierbar (feste Seeds je Optuna-Studie und für die
+Portfolio-Zuteilung).
