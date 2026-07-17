@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 # --- SETUP ---
-TRADE_FILE = "FF1_2020-2026_28A_HistData_Trades.csv"
-FOLD_FILE = "FF1_2020-2026_28A_HistData_FoldLog.csv"   # nur für METHOD="fold"
+TRADE_FILE = "FF1_Main_2020-2026_28A_HistData_Trades.csv"
+FOLD_FILE = "FF1_Main_2020-2026_28A_HistData_FoldLog.csv"   # nur für METHOD="fold"
 METHOD = "block"          # "fold" | "block" | "iid"
 BLOCK_SIZE = 50          # nur für METHOD="block"
 START_CAPITAL = 10000.0
