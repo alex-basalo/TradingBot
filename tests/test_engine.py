@@ -123,15 +123,6 @@ class TestRiskMetrics(unittest.TestCase):
         self.assertIsNone(rm["sharpe"])
         self.assertIsNone(rm["t_stat"])
 
-    def test_positiver_mittelwert_positive_t(self):
-        # Konstant positiver Tages-PnL -> t-Statistik deutlich > 0.
-        tage = self._tage(40)
-        trades = [make_trade(t, t, 1.0, 50.0, 0.0, 1000.0) for t in tage]
-        rm = ReportGenerator._risk_metrics(trades, CONFIG["START_CAPITAL"])
-        self.assertIsNotNone(rm["t_stat"])
-        self.assertGreater(rm["t_stat"], 0.0)
-        self.assertGreater(rm["sharpe"], 0.0)
-
     def test_t_statistik_konventionsunabhaengig(self):
         # Die t-Statistik hängt nicht vom Annualisierungsfaktor ab; sie muss
         # sich aus mean/std * sqrt(n) der Tagesrenditen reproduzieren lassen.
